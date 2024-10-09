@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KBC Game</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Main Screen View -->
+  <div id="main-screen">
+    <h1>KBC Game</h1>
+    <div id="qr-container">
+      <p>Scan this QR code to join the game</p>
+      <div id="qr-code"></div> <!-- Changed from canvas to div for proper QR code rendering -->
+    </div>
+    <div id="question-container">
+      <h2 id="question">Waiting for players...</h2>
+      <div id="answers">
+        <button class="answer-btn" data-id="0">A</button>
+        <button class="answer-btn" data-id="1">B</button>
+        <button class="answer-btn" data-id="2">C</button>
+        <button class="answer-btn" data-id="3">D</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Join View -->
+  <div id="mobile-screen" style="display:none;">
+    <h1>Enter Your Name to Join</h1>
+    <input type="text" id="player-name" placeholder="Enter your name">
+    <button id="join-btn">Join Game</button>
+  </div>
+
+  <!-- QRCode library from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Game Logic -->
+  <script>
+    // Detect if the user is on mobile view based on URL query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const isMobile = urlParams.get('join') === 'true';
+
+    if (isMobile) {
+      // Show the mobile screen and hide the main screen
+      document.getElementById('main-screen').style.display = 'none';
+      document.getElementById('mobile-screen').style.display = 'block';
+
+      // Handle player joining
+      document.getElementById('join-btn').onclick = function () {
+        const playerName = document.getElementById('player-name').value;
+        window.opener.playerJoin(playerName);  // Send player's name to the main screen
+        window.close();  // Close the mobile screen after joining
+      };
+    } else {
+      // Show the main screen and generate the QR code
+      const qrCodeContainer = document.getElementById('qr-code');
+      const url = window.location.href + '?join=true';
+
+      // Ensure QRCode.js is loaded and generate the QR code
+      new QRCode(qrCodeContainer, {
+        text: url,  // URL the QR code should point to (same app with mobile join)
+        width: 128,
+        height: 128,
+        colorDark: "#000000",
+        colorLight: "#ffffff"
+      });
+
+      // Game logic for the main screen
+      let players = [];
+      let currentQuestionIndex = 0;
+
+      const questions = [
+        {
+          question: "Which planet is known as the Red Planet?",
+          answers: ["Earth", "Venus", "Mars", "Jupiter"],
+          correctAnswer: 2
+        },
+        {
+          question: "Who wrote 'Hamlet'?",
+          answers: ["Charles Dickens", "William Shakespeare", "J.K. Rowling", "Leo Tolstoy"],
+          correctAnswer: 1
+        }
+      ];
+
+      const questionElement = document.getElementById('question');
+      const answerButtons = Array.from(document.querySelectorAll('.answer-btn'));
+
+      // On player join, store their name and show the first question if no other players
+      function playerJoin(playerName) {
+        players.push(playerName);
+        if (players.length === 1) {
+          showQuestion();
+        }
+      }
+
+      // Display question and options
+      function showQuestion() {
+        const currentQuestion = questions[currentQuestionIndex];
+        questionElement.textContent = currentQuestion.question;
+        answerButtons.forEach((button, index) => {
+          button.textContent = currentQuestion.answers[index];
+          button.onclick = () => submitAnswer(index);
+        });
+      }
+
+      // Handle answer submission
+      function submitAnswer(selectedIndex) {
+        const currentQuestion = questions[currentQuestionIndex];
+        const isCorrect = selectedIndex === currentQuestion.correctAnswer;
+
+        if (isCorrect) {
+          alert(`Congratulations! You got it right!`);
+          currentQuestionIndex++;
+          if (currentQuestionIndex < questions.length) {
+            showQuestion();
+          } else {
+            alert('Game over! All questions answered.');
+          }
+        } else {
+          alert('Wrong answer, try again!');
+        }
+      }
+
+      // Expose playerJoin globally so it can be accessed by the mobile screen
+      window.playerJoin = playerJoin;
+    }
+  </script>
+</body>
+</html>
